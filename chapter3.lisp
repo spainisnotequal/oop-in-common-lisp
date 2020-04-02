@@ -20,6 +20,7 @@
   (:documentation "A lock that is either free or busy."))
 
 ;;; Define constructors in order to avoid using "make-instance"
+;;; (constructors are part of the interface)
 
 (defun make-null-lock (name)
   (make-instance 'null-lock :name name))
@@ -62,3 +63,18 @@
 (subtypep 'null-lock 'lock) ; => T, T
 (subtypep 'simple-lock 'lock) ; => T, T
 (subtypep 'null-lock 'simple-lock) ; => NIL, T
+
+;;; Define the (rest of the) interface through generic functions
+(defgeneric seize (lock)
+  (:documentation
+"Seizes the lock.
+Returns the lock when operation succeeds.
+Some locks simply wait until they can succeed, while other locks return NIL if they fail."))
+
+(defgeneric release (lock &optional failure-mode)
+  (:documentation
+"Releases the lock if it is currently owned by this process.
+Returns T if the operation succedds.
+If unsuccessful and failure-mode is :no-error, returns NIL.
+If unsuccessful and failure-mode is :error, signals an error.
+The default for failure-mode is :no-error."))
