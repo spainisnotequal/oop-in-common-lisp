@@ -78,3 +78,47 @@ Returns T if the operation succedds.
 If unsuccessful and failure-mode is :no-error, returns NIL.
 If unsuccessful and failure-mode is :error, signals an error.
 The default for failure-mode is :no-error."))
+
+;;; Methods for null locks
+(defmethod seize (lock null-lock)
+  lock) ; return lock, no waiting
+
+(defmethod release ((lock null-lock) &optional failure-mode)
+  (declare (ignore failure-mode)) ; never fails for null locks
+  lock)
+
+;;; Locks anbd processes
+
+;;  (we assume that the three following primitives exist:
+;;    without-process-preemtion &body body
+;;    process-wait reason function &rest arguments
+;;    *current-process*
+
+;; If value of place is old-value, set it to new-value
+;; Return T if the setf worked, NIL otherwise
+(defmacro setf-if (place old-value new-value)
+  `(without-process-preemtion ; do automatically
+       (cond ((eql ,place ,old-value)
+              (setf ,place ,new-value)
+              t)
+             (t nil))))
+
+
+;;; Methods for simple locks
+(defmethod check-for-mylock ((lock simple-lock) process)
+  (when (eql (lock-owner lock) process)
+    (error "Can't seize ~A because you already own it." lock)))
+
+(defmethod seize ((lock simple-lock))
+  (check-for-mylock lock *current-process*)
+  (do ()
+      ((setf-if (lock-owner lock) nil *current-process*))
+    (process-wait "Seizing lock"
+                  #'(lambda () (null (lock-owner lock))))))
+
+(defmethod release ((lock simple-lock)
+                    &optional (failure-mode :no-error))
+  (or (setf-if (lock-owner lock) *current-process* nil)
+      (ecase failure-mode
+        (:no-error nil)
+        (:error (error "~A is not owned by this process." lock)))))
