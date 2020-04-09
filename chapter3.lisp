@@ -157,3 +157,16 @@ The default for failure-mode is :no-error."))
               (lock-name lock)
               "(no name)")
           (sb-kernel:get-lisp-obj-address lock))) ; get the memory address of lock (SBCL function, not standard)
+
+;;; -------------------------------
+;;; Specializing describe for Locks
+;;; -------------------------------
+
+(defmethod describe ((lock lock))
+  (format t "~&~S is a lock of type ~S named '~A'."
+          lock
+          (type-of lock)
+          (if (slot-boundp lock 'name)
+              (lock-name lock)
+              "(no name)"))
+  (values))
