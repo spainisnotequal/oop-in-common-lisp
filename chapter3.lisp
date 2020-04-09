@@ -170,3 +170,14 @@ The default for failure-mode is :no-error."))
               (lock-name lock)
               "(no name)"))
   (values))
+
+;;; -----------------------------------------------------------
+;;; Specializing describe for Simple Locks with an after method
+;;; -----------------------------------------------------------
+
+(defmethod describe :after ((lock simple-lock))
+  (let ((owner (lock-owner lock)))
+    (format t (if owner
+                  "~&It is now owned by process ~A.~%"
+                  "~&It is now free.~%")
+            owner)))
