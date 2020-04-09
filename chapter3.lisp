@@ -2,8 +2,9 @@
 ;;;; Chapter 3: Developing a Simple CLOS Program: Locks
 ;;;; --------------------------------------------------
 
-
+;;; --------------
 ;;; Define classes
+;;; --------------
 
 (defclass lock ()
   ((name :initarg :name
@@ -19,8 +20,10 @@
           :accessor lock-owner))
   (:documentation "A lock that is either free or busy."))
 
+;;; -----------------------------------------------------------
 ;;; Define constructors in order to avoid using "make-instance"
 ;;; (constructors are part of the interface)
+;;; -----------------------------------------------------------
 
 (defun make-null-lock (name)
   (make-instance 'null-lock :name name))
@@ -28,15 +31,18 @@
 (defun make-simple-lock (name)
   (make-instance 'simple-lock :name name))
 
+;;; ------------------------------
 ;;; Create new objects - instances
+;;; ------------------------------
 
 (defparameter *null-lock*
   (make-null-lock "Null lock"))
 
 (defparameter *simple-lock*
   (make-simple-lock "Simple lock"))
-
+;;; ------------
 ;;; Access slots
+;;; ------------
 
 (lock-name *null-lock*) ; => "Null lock"
 (lock-name *simple-lock*) ; => "Simple lock"
@@ -44,12 +50,16 @@
 (lock-owner *null-lock*) ; => There is no applicable method for the generic function
 (lock-owner *simple-lock*) ; => NIL
 
+;;; ------------
 ;;; Set up slots
+;;; ------------
 
 (setf (lock-owner *simple-lock*) 3401) ; => 3401
 (lock-owner *simple-lock*) ; => 3401
 
+;;; -------------------------
 ;;; Query a lock for its type
+;;; -------------------------
 
 (type-of *null-lock*) ; => null-lock
 (type-of *simple-lock*) ; => simple-lock
@@ -58,13 +68,18 @@
 (typep *simple-lock* 'lock) ; => T
 (typep *simple-lock* 't) ; => T
 
+;;; ---------------------------
 ;;; Check classes relationships
+;;; ---------------------------
 
 (subtypep 'null-lock 'lock) ; => T, T
 (subtypep 'simple-lock 'lock) ; => T, T
 (subtypep 'null-lock 'simple-lock) ; => NIL, T
 
+;;; ------------------------------------------------------------
 ;;; Define the (rest of the) interface through generic functions
+;;; ------------------------------------------------------------
+
 (defgeneric seize (lock)
   (:documentation
 "Seizes the lock.
@@ -79,15 +94,20 @@ If unsuccessful and failure-mode is :no-error, returns NIL.
 If unsuccessful and failure-mode is :error, signals an error.
 The default for failure-mode is :no-error."))
 
+;;; -----------------------
 ;;; Methods for null locks
-(defmethod seize (lock null-lock)
+;;; -----------------------
+
+(defmethod seize ((lock null-lock))
   lock) ; return lock, no waiting
 
 (defmethod release ((lock null-lock) &optional failure-mode)
   (declare (ignore failure-mode)) ; never fails for null locks
   lock)
 
-;;; Locks anbd processes
+;;; -------------------
+;;; Locks and processes
+;;; -------------------
 
 ;;  (we assume that the three following primitives exist:
 ;;    without-process-preemtion &body body
@@ -104,7 +124,10 @@ The default for failure-mode is :no-error."))
              (t nil))))
 
 
+;;; ------------------------
 ;;; Methods for simple locks
+;;; ------------------------
+
 (defmethod check-for-mylock ((lock simple-lock) process)
   (when (eql (lock-owner lock) process)
     (error "Can't seize ~A because you already own it." lock)))
@@ -122,3 +145,15 @@ The default for failure-mode is :no-error."))
       (ecase failure-mode
         (:no-error nil)
         (:error (error "~A is not owned by this process." lock)))))
+
+;;; ------------------------------------
+;;; Specializing print-objects for Locks
+;;; ------------------------------------
+
+(defmethod print-object ((lock lock) stream)
+  (format stream "#<~S ~A ~D>"
+          (type-of lock)
+          (if (slot-boundp lock 'name)
+              (lock-name lock)
+              "(no name)")
+          (sb-kernel:get-lisp-obj-address lock))) ; get the memory address of lock (SBCL function, not standard)
