@@ -97,7 +97,7 @@ The default for failure-mode is :no-error."))
 ;;; -----------------------
 ;;; Methods for null locks
 ;;; -----------------------
-
+ 
 (defmethod seize ((lock null-lock))
   lock) ; return lock, no waiting
 
@@ -181,3 +181,29 @@ The default for failure-mode is :no-error."))
                   "~&It is now owned by process ~A.~%"
                   "~&It is now free.~%")
             owner)))
+
+;;; ----------------------
+;;; Defining a mixin class
+;;; ----------------------
+
+(defclass ordered-lock-mixin ()
+  ((level :initarg :level
+          :reader lock-level
+          :type integer))
+  (:documentation "Avoids deadlock by checking lock order."))
+
+;;; ---------------------------
+;;; Defining aggreagate classes
+;;; ---------------------------
+
+(defclass ordered-lock (ordered-lock-mixin simple-lock)
+  ()
+  (:documentation
+"Avoids deadlock by ensuring that a process seizes locks in a specific order.
+When seizing, waits if the lock is busy."))
+
+(defclass ordered-null-lock (ordered-lock-mixin null-lock)
+  ()
+  (:documentation
+"Avoids deadlock by ensuring that a process seizes locks in a specific order.
+Does not actually seize anything, but does check that the lock ordering is obeyed."))
