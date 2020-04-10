@@ -257,3 +257,24 @@ Does not actually seize anything, but does check that the lock ordering is obeye
 
 (defun get-highest-lock (process)
   (first (get-process-locks process)))
+
+;;; -------------------------
+;;; Methods for ordered locks
+;;; -------------------------
+
+(defmethod seize :before ((lock ordered-lock-mixin))
+  "Checks validity of this process seizing this ordered lock.
+  If invalid, signals an error.
+  If valid, does nothing and allows primary method to run."
+  ;; First check for the mylock mistake to give the specific
+  ;; error for that case, instead of the "Out of order" error.
+  (check-for-mylock lock *current-process*)
+  ;; Now check for a possible infraction of ordered locking.
+  (let ((highest-lock (get-highest-lock *current-process*)))
+    (when (and highest-lock
+               (<= (lock-level lock) (lock-level highest-lock)))
+      (error "Out of order: Can't seize ~A while owning ~A" lock highest-lock))))
+
+(defmethod seize :after ((lock ordered-lock-mixin))
+  "Adds the lock to the *process-lock-table*."
+  (add-process-lock *current-process* lock))
