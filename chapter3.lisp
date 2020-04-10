@@ -308,3 +308,24 @@ Does not actually seize anything, but does check that the lock ordering is obeye
            (setf (print-requests *print-queue*)
                  (delete request (print-requests *print-queue*))))
       (release lock :no-error))))
+
+;;; ----------------------------------------------
+;;; Supporting the typical use of locks: with-lock
+;;; ----------------------------------------------
+
+(defmacro with-lock ((lock) &body body)
+  (let ((lock-var (gensym)))
+    `(let ((,lock-var ,lock))
+       (unwind-protect
+            (progn (seize,lock-var)
+                   ,@body)
+         (release ,lock-var :no-error)))))
+
+;; Redefine "enqueue-print-request" and "dequeue-print-request"
+(defun enqueue-print-request (request)
+  (with-lock ((print-queue-lock *print-queue*))
+    (push request (print-requests *print-queue*))))
+(defun dequeue-print-request (request)
+  (with-lock ((print-queue-lock *print-queue*))
+    (setf (print-requests *print-queue*)
+          (delete request (print-requests *print-queue*)))))
