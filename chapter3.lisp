@@ -221,3 +221,14 @@ Does not actually seize anything, but does check that the lock ordering is obeye
   (make-instance 'ordered-lock
                  :name name
                  :level level))
+
+;;; ---------------------------------------
+;;; Specialize "describe" for ordered locks
+;;; ---------------------------------------
+
+(defmethod describe :after ((lock ordered-lock-mixin))
+  (format t "~&Its lock level is ~D." (lock-level lock)))
+
+(defparameter *lock-C* (make-ordered-lock "C" 3))
+
+(describe *lock-C*)
