@@ -329,3 +329,18 @@ Does not actually seize anything, but does check that the lock ordering is obeye
   (with-lock ((print-queue-lock *print-queue*))
     (setf (print-requests *print-queue*)
           (delete request (print-requests *print-queue*)))))
+
+;;; ------------------------------------------------
+;;; Specializing "describe" for print-request queues
+;;; ------------------------------------------------
+
+(defmethod describe ((queue print-request-queue))
+  (let ((owner (lock-owner (print-queue-lock queue)))
+        (requests (print-requests queue)))
+    (if owner
+        (format t "~&Process ~A owns queue.~%" owner))
+    (format t (if (null requests)
+                  "~&There are no print requests.~%"
+                  "~&Pending print requests:~%"))
+    (dolist (x requests)
+      (format t "~&~A " x))))
