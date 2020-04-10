@@ -232,3 +232,28 @@ Does not actually seize anything, but does check that the lock ordering is obeye
 (defparameter *lock-C* (make-ordered-lock "C" 3))
 
 (describe *lock-C*)
+
+;;; -----------------------------------
+;;; Implement ordered locking behaviour
+;;; -----------------------------------
+
+(defparameter *process-lock-table* (make-hash-table)
+  "Each key is a process identifier;
+   value is a list of ordered locks it owns.")
+
+(defun add-process-lock (process lock)
+  (without-process-preemtion
+      (push lock
+            (gethash process *process-lock-table*))))
+
+(defun delete-process-lock (process lock)
+  (without-process-preemtion
+      (let ((hash-entry (gethash process *process-lock-table*)))
+        (setf (gethash process *process-lock-table*) (delete lock hash-entry)))))
+
+(defun get-process-locks (process)
+  (without-process-preemtion
+      (gethash process *process-lock-table*)))
+
+(defun get-highest-lock (process)
+  (first (get-process-locks process)))
