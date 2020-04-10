@@ -278,3 +278,33 @@ Does not actually seize anything, but does check that the lock ordering is obeye
 (defmethod seize :after ((lock ordered-lock-mixin))
   "Adds the lock to the *process-lock-table*."
   (add-process-lock *current-process* lock))
+
+;;; ----------------------
+;;; Locking a shared queue
+;;; ----------------------
+
+(defclass print-request-queue ()
+  ((lock :accessor print-queue-lock :initform (make-simple-lock "Print Queue"))
+   (requests :accessor print-requests :initform nil))
+  (:documentation "Queue of pending print requests."))
+
+(defun make-print-queue ()
+  (make-instance 'print-request-queue))
+
+(defparameter *print-queue* (make-print-queue))
+
+(defun enqueue-print-request (request)
+  (let ((lock (print-queue-lock *print-queue*)))
+    (unwind-protect
+         (progn (seize lock)
+                (push request (print-requests *print-queue*)))
+      (release lock :no-error))))
+
+(defun dequeue-print-request (request)
+  (let ((lock (print-queue-lock *print-queue*)))
+    (unwind-protect
+         (progn
+           (seize lock)
+           (setf (print-requests *print-queue*)
+                 (delete request (print-requests *print-queue*))))
+      (release lock :no-error))))
