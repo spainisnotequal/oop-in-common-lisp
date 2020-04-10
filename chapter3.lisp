@@ -207,3 +207,17 @@ When seizing, waits if the lock is busy."))
   (:documentation
 "Avoids deadlock by ensuring that a process seizes locks in a specific order.
 Does not actually seize anything, but does check that the lock ordering is obeyed."))
+
+;;; -------------------
+;;; Define constructors
+;;; -------------------
+
+(defun make-ordered-null-lock (name level)
+  (make-instance 'ordered-null-lock
+                 :name name
+                 :level level))
+
+(defun make-ordered-lock (name level)
+  (make-instance 'ordered-lock
+                 :name name
+                 :level level))
