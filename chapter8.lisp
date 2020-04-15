@@ -66,3 +66,49 @@
 ;;; Return the area of a triangle ;;; Algorithm is: area = ab(sin C)/2
 (defmethod area ((triangle triangle))
   (* (side-a triangle) (side-b triangle) (sin (angle-C triangle)) .5))
+
+;;; ----------------------------------------
+;;; Changing the representation of triangles
+;;; ----------------------------------------
+
+(defclass triangle (shape)
+  ((a :reader side-a :initarg :side-a)
+   (b :reader side-b
+      :initarg :side-b)
+   (angle-C :reader angle-C :initarg :angle-C)))
+
+ ;;; Here we delete slot c and add angle-C
+ ;;; We need to initialize the new slot angle-C
+(defmethod update-instance-for-redefined-class :after
+    ((instance triangle)
+     added-slots discarded-slots
+     plist &rest initargs)
+  (declare (ignore initargs))
+  ;; Identify this particular redefinition
+  (when (and (member 'c discarded-slots)
+             (member 'angle-C added-slots))
+    (setf (slot-value instance 'angle-C)
+          (three-sides-to-angle
+           (getf plist 'c)
+           (side-a instance)
+           (side-b instance))))) 
+
+;;; Write a new method to calculate the third side of a triangle.
+(defmethod side-c ((triangle triangle))
+  (third-side (side-a triangle) (side-b triangle) (angle-C triangle)))
+
+;; Algorithm is: c^2 = a^2 + b^2 - 2ab(cos C)
+(defun third-side (a b angle-C)
+  (sqrt (- (+ (expt a 2) (expt b 2))
+           (* 2 a b (cos angle-C)))))
+
+;;; Write a new interface for making new triangles (new constructor)
+(defun make-triangle (a b c)
+  (let* ((float-a (coerce a 'float))
+         (float-b (coerce b 'float))
+         (float-c (coerce c 'float))
+         (angle-C (three-sides-to-angle float-c float-a float-b)))
+    (make-instance 'triangle
+                   :side-a float-a
+                   :side-b float-b
+                   :angle-C angle-C)))
